@@ -1,0 +1,10 @@
+database:
+  url: some_url
+
+rabbitmq:
+  url: some_url
+
+server:
+  host: some_host
+  port: some_port
+
