@@ -27,7 +27,7 @@ func main() {
 	pg := postgres.New(cfg.Database.URL)
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/tasks", newTaskHandler(pg, rabbit))
+	mux.HandleFunc("/tasks", taskHandler(pg, rabbit))
 
 	server := &http.Server{
 		Addr:         fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port),
@@ -59,74 +59,110 @@ func main() {
 	server.Shutdown(ctx)
 }
 
-func newTaskHandler(pg *postgres.Postgres, rabbit *rabbitmq.RabbitMQ) func(http.ResponseWriter, *http.Request) {
+func taskHandler(pg *postgres.Postgres, rabbit *rabbitmq.RabbitMQ) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
+		if r.Method == http.MethodGet {
+			id := r.URL.Query().Get("id")
+			if id == "" {
+				w.Header().Set("Content-Type", "text/plain")
+				w.WriteHeader(http.StatusBadRequest)
+				w.Write([]byte("please provide id"))
+				return
+			}
+
+			var task message.TaskMessage
+			err := pg.DB.QueryRowContext(r.Context(),
+				`SELECT id, expression, status, result FROM tasks WHERE id = $1`,
+				id).Scan(
+				&task.ID,
+				&task.Expression,
+				&task.Status,
+				&task.Result)
+			if err != nil {
+				w.Header().Set("Content-Type", "text/plain")
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(err.Error()))
+				return
+			}
+
+			body, _ := json.Marshal(task)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(200)
+			w.Write(body)
+			return
+		} else if r.Method == http.MethodPost {
+			var req message.TaskMessage
+
+			body, err := io.ReadAll(r.Body)
+			if err != nil {
+				w.Header().Set("Content-Type", "text/plain")
+				w.WriteHeader(422)
+				w.Write([]byte(err.Error()))
+				return
+			}
+
+			err = json.Unmarshal(body, &req)
+			if err != nil {
+				w.Header().Set("Content-Type", "text/plain")
+				w.WriteHeader(400)
+				w.Write([]byte(err.Error()))
+				return
+			}
+
+			req.Status = message.SCHEDULED
+
+			// Save to database
+			err = pg.DB.QueryRowContext(
+				r.Context(),
+				`INSERT INTO tasks (expression, status) VALUES ($1, $2) RETURNING id`,
+				req.Expression, req.Status,
+			).Scan(&req.ID)
+			if err != nil {
+				w.Header().Set("Content-Type", "text/plain")
+				w.WriteHeader(500)
+				w.Write([]byte(err.Error()))
+				return
+			}
+
+			// Marshal for our rabbitmq payload
+			data, err := json.Marshal(req)
+			if err != nil {
+				w.Header().Set("Content-Type", "text/plain")
+				w.WriteHeader(500)
+				w.Write([]byte(err.Error()))
+				return
+			}
+			// Publish to rabbitmq
+			err = rabbit.Ch.PublishWithContext(
+				r.Context(),
+				"tasks",
+				"tasks",
+				false,
+				false,
+				amqp.Publishing{
+					// Will be used for tracing purposes
+					// Headers:         map[string]interface{}{},
+					ContentType: "application/json",
+					MessageId:   uuid.NewString(),
+					Timestamp:   time.Now(),
+					Body:        data,
+				})
+			if err != nil {
+				w.Header().Set("Content-Type", "text/plain")
+				w.WriteHeader(500)
+				w.Write([]byte(err.Error()))
+				return
+			}
+
+			w.Header().Set("Content-Type", "text/plain")
+			w.WriteHeader(201)
+			w.Write([]byte(fmt.Sprintf("Your task has been sent to our workers with %d", req.ID)))
+			return
+		} else {
+			w.Header().Set("Content-Type", "text/plain")
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			w.Write([]byte("method not allowed"))
-		}
-
-		var req message.TaskMessage
-
-		body, err := io.ReadAll(r.Body)
-		if err != nil {
-			w.WriteHeader(422)
-			w.Write([]byte(err.Error()))
 			return
 		}
-
-		err = json.Unmarshal(body, &req)
-		if err != nil {
-			w.WriteHeader(400)
-			w.Write([]byte(err.Error()))
-			return
-		}
-
-		req.Status = message.SCHEDULED
-
-		// Save to database
-		err = pg.DB.QueryRowContext(
-			r.Context(),
-			`INSERT INTO tasks (expression, status) VALUES ($1, $2) RETURNING id`,
-			req.Expression, req.Status,
-		).Scan(&req.ID)
-		if err != nil {
-			w.WriteHeader(500)
-			w.Write([]byte(err.Error()))
-			return
-		}
-
-		// Marshal for our rabbitmq payload
-		data, err := json.Marshal(req)
-		if err != nil {
-			w.WriteHeader(500)
-			w.Write([]byte(err.Error()))
-			return
-		}
-		// Publish to rabbitmq
-		err = rabbit.Ch.PublishWithContext(
-			r.Context(),
-			"tasks",
-			"tasks",
-			false,
-			false,
-			amqp.Publishing{
-				// Will be used for tracing purposes
-				// Headers:         map[string]interface{}{},
-				ContentType: "application/json",
-				MessageId:   uuid.NewString(),
-				Timestamp:   time.Now(),
-				Body:        data,
-			})
-		if err != nil {
-			w.WriteHeader(500)
-			w.Write([]byte(err.Error()))
-			return
-		}
-
-		w.WriteHeader(201)
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte("Your task has been sent to our workers"))
-		return
 	}
 }
