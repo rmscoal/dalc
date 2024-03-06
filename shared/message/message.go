@@ -10,7 +10,7 @@ const (
 
 type TaskMessage struct {
 	ID         int        `json:"id"`
-	Expression string `json:"expression"`
+	Expression string     `json:"expression"`
 	Status     TaskStatus `json:"status"`
-	Result     int64      `json:"result"`
+	Result     *float64   `json:"result"`
 }

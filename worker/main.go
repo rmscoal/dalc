@@ -8,6 +8,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/Knetic/govaluate"
 	"github.com/charmbracelet/log"
 	"github.com/google/uuid"
 
@@ -74,9 +75,29 @@ func subscribe(ctx context.Context, pg *postgres.Postgres, tasks <-chan amqp.Del
 			go log.Error("unable to decode task body:", err)
 		}
 
-		// Dummy result first
-		tm.Result = 1
-		tm.Status = message.COMPLETED
+		expression, err := govaluate.NewEvaluableExpression(tm.Expression)
+		if err != nil {
+			tm.Status = message.FAILED
+		}
+		result, err := expression.Evaluate(nil)
+		if err != nil {
+			tm.Status = message.FAILED
+		}
+		switch r := result.(type) {
+		case float64:
+			tm.Result = &r
+		case float32:
+			x := float64(r)
+			tm.Result = &x
+		case int64:
+			x := float64(r)
+			tm.Result = &x
+		case int32:
+			x := float64(r)
+			tm.Result = &x
+		default:
+			tm.Status = message.FAILED
+		}
 
 		_, err = pg.DB.ExecContext(ctx, `UPDATE tasks SET result = $1, status = $2 WHERE id = $3`, tm.Result, tm.Status, tm.ID)
 		if err != nil {
