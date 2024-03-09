@@ -1,4 +1,4 @@
-package message
+package domain
 
 type TaskStatus string
 
@@ -8,7 +8,7 @@ const (
 	COMPLETED TaskStatus = "COMPLETED"
 )
 
-type TaskMessage struct {
+type Task struct {
 	ID         int        `json:"id"`
 	Expression string     `json:"expression"`
 	Status     TaskStatus `json:"status"`

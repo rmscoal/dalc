@@ -15,7 +15,7 @@ import (
 	"github.com/rmscoal/dalc/config"
 	"github.com/rmscoal/dalc/pkg/postgres"
 	rabbitmq "github.com/rmscoal/dalc/pkg/rabbitmq"
-	"github.com/rmscoal/dalc/shared/message"
+	"github.com/rmscoal/dalc/shared/domain"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
@@ -68,7 +68,7 @@ func subscribe(ctx context.Context, pg *postgres.Postgres, tasks <-chan amqp.Del
 		log.Infof("task with messageId %s received", task.MessageId)
 
 		var err error
-		var tm message.TaskMessage
+		var tm domain.Task
 
 		err = json.Unmarshal(task.Body, &tm)
 		if err != nil {
@@ -77,11 +77,11 @@ func subscribe(ctx context.Context, pg *postgres.Postgres, tasks <-chan amqp.Del
 
 		expression, err := govaluate.NewEvaluableExpression(tm.Expression)
 		if err != nil {
-			tm.Status = message.FAILED
+			tm.Status = domain.FAILED
 		}
 		result, err := expression.Evaluate(nil)
 		if err != nil {
-			tm.Status = message.FAILED
+			tm.Status = domain.FAILED
 		}
 		switch r := result.(type) {
 		case float64:
@@ -96,7 +96,7 @@ func subscribe(ctx context.Context, pg *postgres.Postgres, tasks <-chan amqp.Del
 			x := float64(r)
 			tm.Result = &x
 		default:
-			tm.Status = message.FAILED
+			tm.Status = domain.FAILED
 		}
 
 		_, err = pg.DB.ExecContext(ctx, `UPDATE tasks SET result = $1, status = $2 WHERE id = $3`, tm.Result, tm.Status, tm.ID)

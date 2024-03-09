@@ -17,7 +17,7 @@ import (
 	"github.com/rmscoal/dalc/config"
 	"github.com/rmscoal/dalc/pkg/postgres"
 	"github.com/rmscoal/dalc/pkg/rabbitmq"
-	"github.com/rmscoal/dalc/shared/message"
+	"github.com/rmscoal/dalc/shared/domain"
 )
 
 func main() {
@@ -70,7 +70,7 @@ func taskHandler(pg *postgres.Postgres, rabbit *rabbitmq.RabbitMQ) func(http.Res
 				return
 			}
 
-			var task message.TaskMessage
+			var task domain.Task
 			err := pg.DB.QueryRowContext(r.Context(),
 				`SELECT id, expression, status, result FROM tasks WHERE id = $1`,
 				id).Scan(
@@ -91,7 +91,7 @@ func taskHandler(pg *postgres.Postgres, rabbit *rabbitmq.RabbitMQ) func(http.Res
 			w.Write(body)
 			return
 		} else if r.Method == http.MethodPost {
-			var req message.TaskMessage
+			var req domain.Task
 
 			body, err := io.ReadAll(r.Body)
 			if err != nil {
@@ -109,7 +109,7 @@ func taskHandler(pg *postgres.Postgres, rabbit *rabbitmq.RabbitMQ) func(http.Res
 				return
 			}
 
-			req.Status = message.SCHEDULED
+			req.Status = domain.SCHEDULED
 
 			// Save to database
 			err = pg.DB.QueryRowContext(
