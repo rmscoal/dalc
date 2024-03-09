@@ -72,12 +72,13 @@ func taskHandler(pg *postgres.Postgres, rabbit *rabbitmq.RabbitMQ) func(http.Res
 
 			var task domain.Task
 			err := pg.DB.QueryRowContext(r.Context(),
-				`SELECT id, expression, status, result FROM tasks WHERE id = $1`,
+				`SELECT id, expression, status, result, error_message FROM tasks WHERE id = $1`,
 				id).Scan(
 				&task.ID,
 				&task.Expression,
 				&task.Status,
-				&task.Result)
+				&task.Result,
+				&task.ErrorMessage)
 			if err != nil {
 				w.Header().Set("Content-Type", "text/plain")
 				w.WriteHeader(http.StatusInternalServerError)

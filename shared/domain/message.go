@@ -9,8 +9,9 @@ const (
 )
 
 type Task struct {
-	ID         int        `json:"id"`
-	Expression string     `json:"expression"`
-	Status     TaskStatus `json:"status"`
-	Result     *float64   `json:"result"`
+	ID           int        `json:"id"`
+	Expression   string     `json:"expression"`
+	Status       TaskStatus `json:"status"`
+	Result       *float64   `json:"result"`
+	ErrorMessage string     `json:"errorMessage"`
 }

@@ -80,14 +80,16 @@ func subscribe(ctx context.Context, pg *postgres.Postgres, tasks <-chan amqp.Del
 		expression, err := govaluate.NewEvaluableExpression(tm.Expression)
 		if err != nil {
 			tm.Status = domain.FAILED
-			go log.Info("invalid expression given:", err)
+			tm.ErrorMessage = err.Error()
+			go log.Error("invalid expression given:", err)
 			goto finish
 		}
 
 		result, err = expression.Evaluate(nil)
 		if err != nil {
 			tm.Status = domain.FAILED
-			go log.Info("unable to evaluate expression:", err)
+			tm.ErrorMessage = err.Error()
+			go log.Error("unable to evaluate expression:", err)
 			goto finish
 		}
 
@@ -107,6 +109,7 @@ func subscribe(ctx context.Context, pg *postgres.Postgres, tasks <-chan amqp.Del
 			tm.Result = &x
 		default:
 			tm.Status = domain.FAILED
+			tm.ErrorMessage = "invalid result type, only accepts float64, float32, int64 and int32"
 		}
 
 	finish:
@@ -118,7 +121,14 @@ func subscribe(ctx context.Context, pg *postgres.Postgres, tasks <-chan amqp.Del
 }
 
 func updateTask(ctx context.Context, pg *postgres.Postgres, tm domain.Task) {
-	_, err := pg.DB.ExecContext(ctx, `UPDATE tasks SET result = $1, status = $2 WHERE id = $3`, tm.Result, tm.Status, tm.ID)
+	_, err := pg.DB.ExecContext(ctx,
+		`UPDATE tasks
+		SET
+			result = $1,
+			status = $2,
+			error_message = $3
+		WHERE id = $4`,
+		tm.Result, tm.Status, tm.ErrorMessage, tm.ID)
 	if err != nil {
 		go log.Error("unable to update task result:", err)
 	}
