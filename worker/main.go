@@ -58,31 +58,41 @@ func main() {
 
 	ctx, cancel := context.WithTimeout(appCtx, 10*time.Second)
 	defer cancel()
-	log.Infof("Shutting down worker...")
+	log.Info("Shutting down worker...")
 	rabbit.Shutdown(ctx)
 	pg.Shutdown(ctx)
 }
 
 func subscribe(ctx context.Context, pg *postgres.Postgres, tasks <-chan amqp.Delivery) {
 	for task := range tasks {
-		log.Infof("task with messageId %s received", task.MessageId)
+		log.Infof("message with ID %s received", task.MessageId)
 
 		var err error
 		var tm domain.Task
+		var result any
 
 		err = json.Unmarshal(task.Body, &tm)
 		if err != nil {
 			go log.Error("unable to decode task body:", err)
+			return
 		}
 
 		expression, err := govaluate.NewEvaluableExpression(tm.Expression)
 		if err != nil {
 			tm.Status = domain.FAILED
+			go log.Info("invalid expression given:", err)
+			goto finish
 		}
-		result, err := expression.Evaluate(nil)
+
+		result, err = expression.Evaluate(nil)
 		if err != nil {
 			tm.Status = domain.FAILED
+			go log.Info("unable to evaluate expression:", err)
+			goto finish
 		}
+
+		// Gets our result based on the type
+		tm.Status = domain.COMPLETED
 		switch r := result.(type) {
 		case float64:
 			tm.Result = &r
@@ -99,14 +109,24 @@ func subscribe(ctx context.Context, pg *postgres.Postgres, tasks <-chan amqp.Del
 			tm.Status = domain.FAILED
 		}
 
-		_, err = pg.DB.ExecContext(ctx, `UPDATE tasks SET result = $1, status = $2 WHERE id = $3`, tm.Result, tm.Status, tm.ID)
-		if err != nil {
-			go log.Error("unable to update task result:", err)
-		}
+	finish:
+		// Updates our task into database
+		// and acknowledge the message
+		updateTask(ctx, pg, tm)
+		ackTask(task)
+	}
+}
 
-		err = task.Ack(false)
-		if err != nil {
-			go log.Error("unable to ack task:", err)
-		}
+func updateTask(ctx context.Context, pg *postgres.Postgres, tm domain.Task) {
+	_, err := pg.DB.ExecContext(ctx, `UPDATE tasks SET result = $1, status = $2 WHERE id = $3`, tm.Result, tm.Status, tm.ID)
+	if err != nil {
+		go log.Error("unable to update task result:", err)
+	}
+}
+
+func ackTask(task amqp.Delivery) {
+	err := task.Ack(false)
+	if err != nil {
+		go log.Error("unable to ack task:", err)
 	}
 }
