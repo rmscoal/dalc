@@ -3,9 +3,12 @@ package rabbitmq
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
+	"net/url"
 
 	amqp "github.com/rabbitmq/amqp091-go"
+	"github.com/rmscoal/dalc/config"
 )
 
 type RabbitMQ struct {
@@ -15,10 +18,15 @@ type RabbitMQ struct {
 	TaskQueue amqp.Queue
 }
 
-func New(url string) *RabbitMQ {
-	rabbit := &RabbitMQ{}
+func New(cfg config.RabbitMQ) *RabbitMQ {
+	rburl, err := url.Parse(fmt.Sprintf("amqp://%s/%s", cfg.Host, cfg.VirtualHost))
+	if err != nil {
+		log.Fatal("unable to parse base rabbitmq dsn", "err", err)
+	}
+	rburl.User = url.UserPassword(cfg.Username, cfg.Password)
 
-	conn, err := amqp.Dial(url)
+	rabbit := &RabbitMQ{}
+	conn, err := amqp.Dial(rburl.String())
 	if err != nil {
 		log.Fatal("unable to connect to rabbitmq:", err)
 	}

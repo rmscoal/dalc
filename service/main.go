@@ -22,10 +22,10 @@ import (
 )
 
 func main() {
-	cfg := config.GetConfig("config.yaml")
+	cfg := config.GetConfig()
 
-	rabbit := rabbitmq.New(cfg.RabbitMQ.URL)
-	pg := postgres.New(cfg.Database.URL)
+	rabbit := rabbitmq.New(cfg.RabbitMQ)
+	pg := postgres.New(cfg.Database)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/tasks", taskHandler(pg, rabbit))

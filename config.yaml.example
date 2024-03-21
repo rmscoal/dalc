@@ -1,10 +1,17 @@
 database:
-  url: some_url
+  username: postgres
+  password: password
+  host: localhost:5432
+  dbname: dalc
+  sslmode: disable
 
 rabbitmq:
-  url: some_url
+  username: guest
+  password: guest
+  host: localhost:5672
+  virtual_host: /
 
 server:
-  host: some_host
-  port: some_port
+  host: localhost
+  port: 8080
 

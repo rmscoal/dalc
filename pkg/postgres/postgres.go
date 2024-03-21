@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
+	"net/url"
 	"sync"
 	"time"
 
@@ -12,6 +14,7 @@ import (
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/lib/pq"
+	"github.com/rmscoal/dalc/config"
 )
 
 type Postgres struct {
@@ -23,12 +26,22 @@ var (
 	once sync.Once
 )
 
-func New(url string) *Postgres {
+func New(cfg config.Database) *Postgres {
 	if pg == nil {
 		once.Do(func() {
-			db, err := sql.Open("postgres", url)
+			pgurl, err := url.Parse(fmt.Sprintf("postgres://%s/%s", cfg.Host, cfg.DBName))
 			if err != nil {
-				log.Fatalf("unable to connect to postgres: %s", err)
+				log.Fatal("unable to parse base dsn", "err", err)
+			}
+			pgurl.User = url.UserPassword(cfg.Username, cfg.Password)
+			// Add sslmode query
+			query := pgurl.Query()
+			query.Set("sslmode", cfg.SSLMode)
+			pgurl.RawQuery = query.Encode()
+
+			db, err := sql.Open("postgres", pgurl.String())
+			if err != nil {
+				log.Fatal("unable to connect to postgres", "url", pgurl.String(), "err", err)
 			}
 
 			driver, err := postgres.WithInstance(db, &postgres.Config{

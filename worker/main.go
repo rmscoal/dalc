@@ -27,11 +27,11 @@ var (
 )
 
 func main() {
-	cfg := config.GetConfig("config.yaml")
 	appCtx := context.Background()
+	cfg := config.GetConfig()
 
-	rabbit = rabbitmq.New(cfg.RabbitMQ.URL) // We have our rabbitmq ready to use
-	pg = postgres.New(cfg.Database.URL)
+	rabbit := rabbitmq.New(cfg.RabbitMQ)
+	pg := postgres.New(cfg.Database)
 
 	tasks, err := rabbit.Ch.ConsumeWithContext(
 		appCtx,
