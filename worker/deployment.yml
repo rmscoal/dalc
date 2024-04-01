@@ -1,0 +1,98 @@
+# https://kubernetes.io/docs/concepts/workloads/controllers/deployment/
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name:  worker-app-deployment
+  namespace: default
+  labels:
+    app:  worker-app
+spec:
+  selector:
+    matchLabels:
+      app: worker-app
+  replicas: 1
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app:  worker-app
+    spec:
+      restartPolicy: Always
+
+      ##############
+      # CONTAINERS #
+      ##############
+      containers:
+      - name:  worker-app
+        image:  rmscoal/dalc-worker-app:v0.0.2
+        
+        ################
+        # ENVIRONMENTS #
+        ################
+        env:
+          # DATABASE ENVIRONMENTS
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: dalc-secret
+              key: db_username
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: dalc-secret
+              key: db_password
+        - name: DB_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: dalc-cm
+              key: db_host
+        - name: DB_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: dalc-cm
+              key: db_name
+        - name: DB_SSLMODE
+          value: disable
+          # RABBITMQ ENVIRONMENTS
+        - name: RABBITMQ_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: dalc-secret
+              key: rabbitmq_username
+        - name: RABBITMQ_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: dalc-secret
+              key: rabbitmq_password
+        - name: RABBITMQ_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: dalc-cm
+              key: rabbitmq_host
+        - name: RABBITMQ_VIRTUAL_HOST
+          value: /
+        ports:
+        - containerPort:  8081
+          name:  worker-app
+---
+# https://kubernetes.io/docs/concepts/services-networking/service/
+apiVersion: v1
+kind: Service
+metadata:
+  name: worker-app-service
+  namespace: default
+spec:
+  selector:
+    app: worker-app-service
+  type: NodePort
+  ports:
+  - name: worker-app-service
+    protocol: TCP
+    port: 8081
+    targetPort: 8081
+    nodePort: 30002
+---

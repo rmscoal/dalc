@@ -2,9 +2,9 @@ package config
 
 import (
 	"flag"
-	"log"
 	"os"
 
+	"github.com/charmbracelet/log"
 	"github.com/ilyakaznacheev/cleanenv"
 )
 
@@ -40,7 +40,7 @@ func GetConfig() Config {
 	var cfg Config
 	var envFile string
 
-	flag.StringVar(&envFile, "env-file", "config.yaml", "Read environments variables from...")
+	flag.StringVar(&envFile, "env-file", "", "Read environments variables from...")
 	flag.Parse()
 
 	if envFile != "" {

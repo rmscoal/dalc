@@ -1,0 +1,10 @@
+# https://kubernetes.io/docs/concepts/configuration/configmap/
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dalc-cm
+  namespace: default
+data:
+  db_host: postgres
+  db_name: dalc
+  rabbitmq_host: rabbitmq
