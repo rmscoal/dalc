@@ -1,41 +1,7 @@
-# Source: https://github.com/rabbitmq/diy-kubernetes-examples/blob/master/minikube/statefulset.yaml
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: rabbitmq
-  namespace: default
----
-kind: Role
-apiVersion: rbac.authorization.k8s.io/v1beta1
-metadata:
-  name: rabbitmq-peer-discovery-rbac
-  namespace: default
-rules:
-- apiGroups: [""]
-  resources: ["endpoints"]
-  verbs: ["get"]
-- apiGroups: [""]
-  resources: ["events"]
-  verbs: ["create"]
----
-kind: RoleBinding
-apiVersion: rbac.authorization.k8s.io/v1beta1
-metadata:
-  name: rabbitmq-peer-discovery-rbac
-  namespace: default
-subjects:
-- kind: ServiceAccount
-  name: rabbitmq
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: rabbitmq-peer-discovery-rbac
----
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: rabbitmq-config
-  namespace: default
 data:
   enabled_plugins: |
       [rabbitmq_management,rabbitmq_peer_discovery_k8s].
@@ -49,6 +15,9 @@ data:
       ## Set to "hostname" to use pod hostnames.
       ## When this value is changed, so should the variable used to set the RABBITMQ_NODENAME
       ## environment variable.
+      log.file.level = debug
+      log.console = true
+      log.console.level = debug
       cluster_formation.k8s.address_type = hostname
       ## How often should node cleanup checks run?
       cluster_formation.node_cleanup.interval = 30
@@ -72,12 +41,12 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: rabbitmq
-  namespace: default
 spec:
   serviceName: rabbitmq
   # Three nodes is the recommended minimum. Some features may require a majority of nodes
   # to be available.
   replicas: 3
+  volumeClaimTemplates: []
   selector:
     matchLabels:
       app: rabbitmq
@@ -86,7 +55,7 @@ spec:
       labels:
         app: rabbitmq
     spec:
-      serviceAccountName: rabbitmq
+    #  serviceAccountName: rabbitmq
       terminationGracePeriodSeconds: 10
       nodeSelector:
         # Use Linux nodes in a mixed OS kubernetes cluster.
@@ -164,14 +133,43 @@ spec:
             - key: enabled_plugins
               path: enabled_plugins
 ---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: rabbitmq-peer-discovery-rbac
+ 
+rules:
+- apiGroups: 
+    - ""
+  resources: 
+    - endpoints
+  verbs: 
+    - get
+    - list
+    - watch
+- apiGroups:
+    - ""
+  resources:
+    - events
+  verbs:
+    - create
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: rabbitmq-peer-discovery-rbac
+subjects:
+- kind: ServiceAccount
+  name: default
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: rabbitmq-peer-discovery-rbac
+---
 kind: Service
 apiVersion: v1
 metadata:
-  namespace: default
   name: rabbitmq
-  labels:
-    app: rabbitmq
-    type: LoadBalancer
 spec:
   type: NodePort
   ports:

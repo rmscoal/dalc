@@ -2,8 +2,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: dalc-cm
-  namespace: default
+  name: dalc
 data:
   db_host: postgres
   db_name: dalc

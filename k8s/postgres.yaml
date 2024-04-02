@@ -57,7 +57,7 @@ spec:
   selector:
     matchLabels:
       app: postgres
-  serviceName: "postgres"
+  serviceName: postgres
   replicas: 1
   template:
     metadata:
@@ -90,19 +90,19 @@ spec:
         - name: POSTGRES_USER
           valueFrom:
             secretKeyRef:
-              name: dalc-secret
+              name: dalc
               key: db_username
               optional: false
         - name: POSTGRES_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: dalc-secret
+              name: dalc
               key: db_password
               optional: false
         - name: POSTGRES_DB
           valueFrom:
             configMapKeyRef:
-              name: dalc-cm
+              name: dalc
               key: db_name
               optional: false
         volumeMounts:
@@ -131,13 +131,13 @@ apiVersion: v1
 kind: Service
 metadata:
   name: postgres
-  labels:
-    app: postgres
 spec:
+  type: NodePort
   ports:
-  - port: 5432
+  - name: postgres
+    protocol: TCP
+    port: 5432
     targetPort: 5432
-    name: postgres
-  clusterIP: None
+    nodePort: 31234
   selector:
     app: postgres

@@ -2,14 +2,11 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name:  worker-app-deployment
-  namespace: default
-  labels:
-    app:  worker-app
+  name:  worker
 spec:
   selector:
     matchLabels:
-      app: worker-app
+      app: worker
   replicas: 1
   strategy:
     rollingUpdate:
@@ -19,80 +16,49 @@ spec:
   template:
     metadata:
       labels:
-        app:  worker-app
+        app:  worker
     spec:
       restartPolicy: Always
-
-      ##############
-      # CONTAINERS #
-      ##############
       containers:
-      - name:  worker-app
-        image:  rmscoal/dalc-worker-app:v0.0.2
-        
-        ################
-        # ENVIRONMENTS #
-        ################
+      - name:  worker
+        image:  rmscoal/dalc-worker-app:v0.0.4
         env:
-          # DATABASE ENVIRONMENTS
         - name: DB_USERNAME
           valueFrom:
             secretKeyRef:
-              name: dalc-secret
+              name: dalc
               key: db_username
         - name: DB_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: dalc-secret
+              name: dalc
               key: db_password
         - name: DB_HOST
           valueFrom:
             configMapKeyRef:
-              name: dalc-cm
+              name: dalc
               key: db_host
         - name: DB_NAME
           valueFrom:
             configMapKeyRef:
-              name: dalc-cm
+              name: dalc
               key: db_name
         - name: DB_SSLMODE
           value: disable
-          # RABBITMQ ENVIRONMENTS
         - name: RABBITMQ_USERNAME
           valueFrom:
             secretKeyRef:
-              name: dalc-secret
+              name: dalc
               key: rabbitmq_username
         - name: RABBITMQ_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: dalc-secret
+              name: dalc
               key: rabbitmq_password
         - name: RABBITMQ_HOST
           valueFrom:
             configMapKeyRef:
-              name: dalc-cm
+              name: dalc
               key: rabbitmq_host
         - name: RABBITMQ_VIRTUAL_HOST
           value: /
-        ports:
-        - containerPort:  8081
-          name:  worker-app
----
-# https://kubernetes.io/docs/concepts/services-networking/service/
-apiVersion: v1
-kind: Service
-metadata:
-  name: worker-app-service
-  namespace: default
-spec:
-  selector:
-    app: worker-app-service
-  type: NodePort
-  ports:
-  - name: worker-app-service
-    protocol: TCP
-    port: 8081
-    targetPort: 8081
-    nodePort: 30002
----
