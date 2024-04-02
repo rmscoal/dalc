@@ -13,8 +13,10 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/golang-migrate/migrate/v4/source/iofs"
 	_ "github.com/lib/pq"
 	"github.com/rmscoal/dalc/config"
+	"github.com/rmscoal/dalc/migrations"
 )
 
 type Postgres struct {
@@ -51,7 +53,12 @@ func New(cfg config.Database) *Postgres {
 				log.Fatalf("unable to create driver to migrate: %s", err)
 			}
 
-			m, err := migrate.NewWithDatabaseInstance("file://migrations", "postgres", driver)
+			d, err := iofs.New(migrations.SQLs, ".")
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			m, err := migrate.NewWithInstance("iofs", d, "postgres", driver)
 			if err != nil {
 				log.Fatalf("unable to initialize migrator: %s", err)
 			}
