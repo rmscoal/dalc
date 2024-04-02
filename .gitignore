@@ -1,2 +1,5 @@
 # Configuration file
 config.yaml
+
+# Dockerfile to test install kind
+Dockerfile.test.install.kind
