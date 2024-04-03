@@ -10,3 +10,8 @@ create-cluster: download-kind
 .PHONY: deploy
 deploy:
 	kubectl apply -f k8s
+
+.PHONY: teardown
+teardown:
+	kubectl delete -f k8s
+	kind delete cluster

@@ -97,6 +97,8 @@ You will receive like the following
 
 There it is. That's **dalc**. Simple but a fun one.
 
+## Shutting down dalc
+Once you're bored with **dalc** 🤣, you can shut it down by simply running `make teardown`. This will stop dalc and clean it.
 
 ## Things to do:
 - [x] Use RabbitMQ as the message queue 
