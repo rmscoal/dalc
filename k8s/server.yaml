@@ -21,7 +21,7 @@ spec:
       restartPolicy: Always
       containers:
       - name:  server
-        image:  rmscoal/dalc-server-app:v0.0.4
+        image:  rmscoal/dalc-server-app:latest
         env:
         - name: DB_USERNAME
           valueFrom:

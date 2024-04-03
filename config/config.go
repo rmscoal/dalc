@@ -3,6 +3,7 @@ package config
 import (
 	"flag"
 	"os"
+	"strconv"
 
 	"github.com/charmbracelet/log"
 	"github.com/ilyakaznacheev/cleanenv"
@@ -65,6 +66,15 @@ func GetConfig() Config {
 				Host:        os.Getenv("RABBITMQ_HOST"),
 				VirtualHost: os.Getenv("RABBITMQ_VIRTUAL_HOST"),
 			},
+		}
+
+		portEnv := os.Getenv("SERVER_PORT")
+		if portEnv != "" {
+			port, err := strconv.Atoi(portEnv)
+			if err != nil {
+				log.Fatal("server port is not a valid integer", "port", portEnv, "error", err)
+			}
+			cfg.Server.Port = port
 		}
 	}
 

@@ -150,5 +150,5 @@ func createTask(pg *postgres.Postgres, rabbit *rabbitmq.RabbitMQ, w http.Respons
 		return
 	}
 
-	api.NewOkMessage(w, fmt.Sprintf("Your task has been sent to our workers with %d", req.ID))
+	api.NewOkMessage(w, fmt.Sprintf("Your task has been sent to our workers with id %d", req.ID))
 }

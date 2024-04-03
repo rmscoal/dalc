@@ -21,7 +21,7 @@ spec:
       restartPolicy: Always
       containers:
       - name:  worker
-        image:  rmscoal/dalc-worker-app:v0.0.4
+        image:  rmscoal/dalc-worker-app:latest
         env:
         - name: DB_USERNAME
           valueFrom:
@@ -62,3 +62,7 @@ spec:
               key: rabbitmq_host
         - name: RABBITMQ_VIRTUAL_HOST
           value: /
+        - name:  SERVER_HOST 
+          value:
+        - name:  SERVER_PORT
+          value:
