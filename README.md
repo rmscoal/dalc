@@ -80,6 +80,24 @@ where every components are `Running` and most importantly the server and worker 
 
 That's it, you're done. You could now try to use dalc.
 
+## Trying dalc
+1. Open your client of choice, I'll be using Postman and head to `POST http://localhost:8080/tasks`, enter the body like the following:
+```json
+{
+    "expression": "1 + 1"
+}
+```
+You will receive like the following
+
+<img src="static/post.png" />
+
+2. To view your result, you'll need to head to `GET http://localhost:8080/tasks?id=1` and you'll receive
+
+<img src="static/get.png" />
+
+There it is. That's **dalc**. Simple but a fun one.
+
+
 ## Things to do:
 - [x] Use RabbitMQ as the message queue 
 - [x] Use Kubernetes to deploy dalc
